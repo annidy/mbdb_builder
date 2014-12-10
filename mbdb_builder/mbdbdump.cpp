@@ -113,12 +113,12 @@ int rebuild(const char *dir)
     std::list<mbdb_record>  contents;
     std::string mbdb = std::string(dir)+"/Manifest.mbdb";
     if (!map(mbdb.c_str(), &begin_addr, &end_addr)) {
-        return false;
+        return 1;
     }
     addr = begin_addr;
     if (memcmp(addr, MBDB_SIG, MBDB_SIG_LEN) != 0) {
         printf("%s: is not a valid MBDB file", mbdb.c_str());
-        return false;
+        return 1;
     }
     
     addr += MBDB_SIG_LEN;
@@ -135,7 +135,7 @@ int rebuild(const char *dir)
                             std::istreambuf_iterator<char>());
             
             unsigned char hash[20];
-            sha1::calc(str.c_str(), str.size(), hash);
+            sha1::calc(str.c_str(), (int)str.size(), hash);
             std::string hash_str;
             hash2str(std::vector<uint8_t>(hash, hash + 20), hash_str);
             assert(hash_str.length() == e.data_hash.length());
@@ -155,7 +155,6 @@ int rebuild(const char *dir)
         }
         e.update(addr);
     }
-    
     unmap(begin_addr, end_addr);
-    return true;
+    return 0;
 }

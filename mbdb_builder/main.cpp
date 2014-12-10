@@ -11,6 +11,7 @@
 
 int main(int argc, const char * argv[]) {
     // insert code here...
-    rebuild(argv[1]);
+    if (argc > 1)
+        return rebuild(argv[1]);
     return 0;
 }
