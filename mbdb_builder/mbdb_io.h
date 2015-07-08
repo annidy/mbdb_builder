@@ -1,7 +1,11 @@
 #ifndef MBDB_READ_H_
 # define MBDB_READ_H_
 
-# include <arpa/inet.h>
+#ifdef _WIN32
+#include "mingw-compat.h"
+#else
+#include <netinet/in.h>
+#endif
 
 # include <cstdint>
 # include <string>

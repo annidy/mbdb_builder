@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <iostream>
 #include <list>
+#include <vector>
 #include <string>
 #include <utility>
 
@@ -34,7 +35,6 @@ struct mbdb_record {
 };
 
 template<typename T>
-void str2hash(T& hash, const std::string& input);
-template<typename T>
-void hash2str(const T hash, std::string& output);
+void str2hash(std::vector<T> hash, const std::string& input);
+void hash2str(std::vector<uint8_t> hash, std::string& output);
 #endif /* !MBDB_RECORD_H_ */

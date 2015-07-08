@@ -4,7 +4,7 @@
 #include <fcntl.h>
 #include <libgen.h>
 #include <string.h>
-#include <sys/mman.h>
+
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -16,6 +16,12 @@
 #include <vector>
 #include <assert.h>
 
+#ifdef _WIN32
+#include "mingw-compat.h"
+#include "mman.h"
+#else
+#include <sys/mman.h>
+#endif
 #define MBDB_SIG        "mbdb\5\0"
 #define MBDB_SIG_LEN    ((sizeof MBDB_SIG) - 1)
 
@@ -126,7 +132,8 @@ int rebuild(const char *dir)
     while (raddr < end_addr)
         contents.push_back(mbdb_record(raddr));
     
-    for (auto& e : contents) {
+    for (auto it = contents.begin(); it != contents.end(); ++it) {
+        auto e = *it;
         std::string file = std::string(dir)+ "/" + e.storage_hash;
         if (e.data_hash.length()) {
             

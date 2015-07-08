@@ -3,36 +3,41 @@
 #include "mbdb_io.h"
 #include "sha1.h"
 
-#include <arpa/inet.h>
 #include <fcntl.h>
-#include <openssl/sha.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
-
+#include <stdio.h>
 #include <cstring>
 #include <vector>
+#define SHA_DIGEST_LENGTH 20
 
-template<typename T>
-void hash2str(const T hash, std::string& output)
+#ifdef _WIN32
+#include "mingw-compat.h"
+#else
+#include <netinet/in.h>
+#endif
+using namespace std;
+
+void hash2str(std::vector<uint8_t> hash, std::string& output)
 {
     static const char* nibble2str = "0123456789abcdef";
     
-    for (typename T::value_type tmp : hash) {
+    for (int i = 0; i < hash.size(); i++) {
+        uint8_t tmp = hash[i];
         output.push_back(nibble2str[tmp >> 4]);
         output.push_back(nibble2str[tmp & 0xf]);
     }
 }
 
-template<typename T>
-void str2hash(T& hash, const std::string& input)
+void str2hash(std::vector<uint8_t> hash, const std::string& input)
 {
     for (int i = 0; i < input.size(); i+=2) {
         char n[3] = {0};
         n[0] = input[i];
         n[1] = input[i+1];
-        typename T::value_type tmp;
+        uint8_t tmp;
         sscanf(n, "%02x", &tmp);
         hash.push_back(tmp);
     }
@@ -212,9 +217,10 @@ void mbdb_record::extract(const char* mbdb_dir) const
         times[0].tv_usec = 0;
         times[1].tv_sec = this->mtime;
         times[1].tv_usec = 0;
-        
         chmod(target_path.c_str(), this->mode & 0777);
+#ifndef WIN32
         utimes(target_path.c_str(), times);
+#endif
     }
 }
 
