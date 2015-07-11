@@ -16,14 +16,19 @@
 #include <vector>
 #include <assert.h>
 
+
 #ifdef _WIN32
 #include "mingw-compat.h"
 #include "mman.h"
+#define PATH_SEP "\\"
 #else
 #include <sys/mman.h>
+#define PATH_SEP "/"
 #endif
 #define MBDB_SIG        "mbdb\5\0"
 #define MBDB_SIG_LEN    ((sizeof MBDB_SIG) - 1)
+extern bool g_readonly;
+using namespace::std;
 
 static bool map(const char* path, char** begin_addr, char** end_addr)
 {
@@ -40,7 +45,6 @@ static bool map(const char* path, char** begin_addr, char** end_addr)
     }
     
     close(fd);
-    
     *begin_addr = (char*) addr;
     *end_addr = (char*) addr + buf.st_size;
     return true;
@@ -116,8 +120,8 @@ int rebuild(const char *dir)
     char*             begin_addr;
     char*             end_addr;
     char*             addr;
-    std::list<mbdb_record>  contents;
-    std::string mbdb = std::string(dir)+"/Manifest.mbdb";
+    list<mbdb_record>  contents;
+    string mbdb = string(dir)+ PATH_SEP + "Manifest.mbdb";
     if (!map(mbdb.c_str(), &begin_addr, &end_addr)) {
         return 1;
     }
@@ -133,34 +137,33 @@ int rebuild(const char *dir)
         contents.push_back(mbdb_record(raddr));
     
     for (auto it = contents.begin(); it != contents.end(); ++it) {
-        auto e = *it;
-        std::string file = std::string(dir)+ "/" + e.storage_hash;
+        auto &e = *it;
+        string file = string(dir)+ PATH_SEP + e.storage_hash;
         if (e.data_hash.length()) {
             
-            std::ifstream ifs(file);
-            std::string str((std::istreambuf_iterator<char>(ifs)),
-                            std::istreambuf_iterator<char>());
+            ifstream ifs(file,  ios_base::in | ios_base::binary);
+            string str((istreambuf_iterator<char>(ifs)),
+                            istreambuf_iterator<char>());
             
             unsigned char hash[20];
             sha1::calc(str.c_str(), (int)str.size(), hash);
-            std::string hash_str;
-            hash2str(std::vector<uint8_t>(hash, hash + 20), hash_str);
+            string hash_str = "";
+            hash2str(vector<uint8_t>(hash, hash + 20), hash_str);
             assert(hash_str.length() == e.data_hash.length());
-            
-//            if (e.data_hash != hash_str) {
-//                std::cout << e.storage_hash << std::endl;
-//                if (e.size) {
-//                    struct  stat buf;
-//                    stat(file.c_str(), &buf);
-//                    if (e.size != buf.st_size) {
-//                        std::cout << "size" << std::endl;
-//                    }
-//                    e.size = buf.st_size;
-//                }
-//            }
+            if (g_readonly) {
+                cout <<e.path << " " << e.storage_hash << " " << e.size << endl;
+                if (e.data_hash != hash_str) {
+                    struct  stat buf;
+                    stat(file.c_str(), &buf);
+                    e.size = buf.st_size; // size is not important
+                    cout <<"* " << hash_str << " " << buf.st_size << endl;
+                }
+
+            }
             e.data_hash = hash_str;
         }
-        e.update(addr);
+        if (!g_readonly)
+            e.update(addr);
     }
     unmap(begin_addr, end_addr);
     return 0;

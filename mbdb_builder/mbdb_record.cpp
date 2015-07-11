@@ -11,12 +11,15 @@
 #include <stdio.h>
 #include <cstring>
 #include <vector>
+#include <assert.h>
 #define SHA_DIGEST_LENGTH 20
 
 #ifdef _WIN32
 #include "mingw-compat.h"
+#define PATH_SEP "\\"
 #else
 #include <netinet/in.h>
+#define PATH_SEP "/"
 #endif
 using namespace std;
 
@@ -31,13 +34,13 @@ void hash2str(std::vector<uint8_t> hash, std::string& output)
     }
 }
 
-void str2hash(std::vector<uint8_t> hash, const std::string& input)
+void str2hash(std::vector<uint8_t> &hash, const std::string input)
 {
     for (int i = 0; i < input.size(); i+=2) {
         char n[3] = {0};
         n[0] = input[i];
         n[1] = input[i+1];
-        uint8_t tmp;
+        int tmp;
         sscanf(n, "%02x", &tmp);
         hash.push_back(tmp);
     }
@@ -51,7 +54,7 @@ static std::string generate_storage_hash(const std::string& domain, const std::s
     
     hash_input = domain + "-" + path;
     
-    sha1::calc(hash_input.c_str(), hash_input.size(), hash);
+    sha1::calc(hash_input.c_str(), (int)hash_input.size(), hash);
     
     hash2str(std::vector<uint8_t>(hash, hash + 20), hash_str);
     
@@ -68,8 +71,9 @@ mbdb_record::mbdb_record(const char*& addr)
     read<std::string>(addr, this->domain);
     read<std::string>(addr, this->path);
     read<std::string>(addr, this->link_target);
-    
+//    printf("[%s %s]\r\n", this->domain.c_str(), path.c_str());
     read<std::vector<uint8_t>>(addr, tmp_hash);
+    assert(tmp_hash.size() == 0 || tmp_hash.size() == 20);
     hash2str(tmp_hash, this->data_hash);
     
     read<std::string>(addr, unused_str);
@@ -104,7 +108,7 @@ void mbdb_record::update(char*& addr) const
 {
     std::vector<uint8_t>  tmp_hash;
     uint8_t               prop_count;
-    
+
     write<std::string>(addr, this->domain);
     write<std::string>(addr, this->path);
     
@@ -145,7 +149,7 @@ void mbdb_record::update(char*& addr) const
 
 std::string mbdb_record::get_path() const
 {
-    return this->domain + "/" + this->path;
+    return this->domain + PATH_SEP + this->path;
 }
 
 static bool extract_file(const std::string& out, const std::string& in, bool empty)
@@ -190,19 +194,19 @@ void mbdb_record::extract(const char* mbdb_dir) const
     bool        res = false;
     std::string target_path;
     
-    target_path.reserve(this->domain.size() + sizeof '/' + this->path.size());
+    target_path.reserve(this->domain.size() + strlen(PATH_SEP) + this->path.size());
     target_path.append(this->domain);
     if (this->path.size() > 0) {
-        target_path.append("/");
+        target_path.append(PATH_SEP);
         target_path.append(this->path);
     }
     
     if (this->mode & S_IFREG) {
         std::string in_path;
         
-        in_path.reserve(strlen(mbdb_dir) + sizeof '/' + 2 * SHA_DIGEST_LENGTH);
+        in_path.reserve(strlen(mbdb_dir) + strlen(PATH_SEP) + 2 * SHA_DIGEST_LENGTH);
         in_path.append(mbdb_dir);
-        in_path.append("/");
+        in_path.append(PATH_SEP);
         in_path.append(this->storage_hash);
         
         res = extract_file(target_path, in_path, this->size == 0);
@@ -211,16 +215,21 @@ void mbdb_record::extract(const char* mbdb_dir) const
     }
     
     if (res) {
+#ifdef _WIN32
+        struct utimbuf times;
+        times.actime = this->atime;
+        times.modtime = this->mtime;
+        utime(target_path.c_str(), &times);
+#else
         struct timeval times[2];
         
         times[0].tv_sec = this->atime;
         times[0].tv_usec = 0;
         times[1].tv_sec = this->mtime;
         times[1].tv_usec = 0;
-        chmod(target_path.c_str(), this->mode & 0777);
-#ifndef WIN32
         utimes(target_path.c_str(), times);
 #endif
+        chmod(target_path.c_str(), this->mode & 0777);
     }
 }
 
@@ -233,9 +242,9 @@ void mbdb_record::cat(const char* mbdb_dir, const std::string& output) const
         return;
     }
     
-    in_path.reserve(strlen(mbdb_dir) + sizeof '/' + 2 * SHA_DIGEST_LENGTH);
+    in_path.reserve(strlen(mbdb_dir) + strlen(PATH_SEP) + 2 * SHA_DIGEST_LENGTH);
     in_path.append(mbdb_dir);
-    in_path.append("/");
+    in_path.append(PATH_SEP);
     in_path.append(this->storage_hash);
     
     extract_file(output, in_path, this->size == 0);

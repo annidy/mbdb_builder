@@ -7,11 +7,22 @@
 //
 
 #include <iostream>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include "mbdbdump.h"
+bool g_readonly = false;
 
 int main(int argc, const char * argv[]) {
     // insert code here...
-    if (argc > 1)
-        return rebuild(argv[1]);
-    return 0;
+    if (argc > 1) {
+        argv++;
+        if (strcmp(*argv, "r") == 0) {
+            g_readonly = true;
+            argv++;
+        }
+        return rebuild(*argv);
+    }
+    printf("%s [r] dir", *argv);
+    return 1;
 }

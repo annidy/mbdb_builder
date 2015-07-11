@@ -34,7 +34,6 @@ struct mbdb_record {
     std::string storage_hash;
 };
 
-template<typename T>
-void str2hash(std::vector<T> hash, const std::string& input);
+void str2hash(std::vector<uint8_t> &hash, const std::string input);
 void hash2str(std::vector<uint8_t> hash, std::string& output);
 #endif /* !MBDB_RECORD_H_ */
