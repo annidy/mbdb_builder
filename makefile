@@ -1,24 +1,32 @@
 CCFLAGS=-std=c++0x
 CFLAGS=
-LDFLAGS=-lwsock32
-OBJS=main.o mbdb_record.o mbdbdump.o sha1.o mman.o
+CPP=g++ -g
+CC=cc -g
+
+ifeq ($(OS),Windows_NT)
+	LDFLAGS=-lwsock32
+	OBJS=main.o mbdb_record.o mbdbdump.o sha1.o mman.o
+else
+	LDFLAGS=
+	OBJS=main.o mbdb_record.o mbdbdump.o sha1.o
+endif
 
 .PHONY : clean
 
-mbdb_builder: $(OBJS)
-	g++ -g -o $@ $(OBJS) $(LDFLAGS) 
+mbdbbuilder: $(OBJS)
+	$(CPP) -o $@ $(OBJS) $(LDFLAGS) 
 
 main.o: mbdb_builder/main.cpp
-	g++ -g -c $< $(CCFLAGS)
+	$(CPP) -c $< $(CCFLAGS)
 mbdb_record.o: mbdb_builder/mbdb_record.cpp
-	g++ -g -c $< $(CCFLAGS)
+	$(CPP) -c $< $(CCFLAGS)
 mbdbdump.o: mbdb_builder/mbdbdump.cpp
-	g++ -g -c $< $(CCFLAGS)
+	$(CPP) -c $< $(CCFLAGS)
 sha1.o: mbdb_builder/sha1.cpp
-	g++ -g -c $< $(CCFLAGS)
+	$(CPP) -c $< $(CCFLAGS)
 mman.o: mbdb_builder/mman.c
-	gcc -g -c $< $(CFLAGS)
+	$(CC) -c $< $(CFLAGS)
 
 clean:
 	rm -f *.o
-	rm -f mbdb_builder.exe
+	rm -f mbdbbuilder.exe mbdbbuilder
